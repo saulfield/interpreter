@@ -2,7 +2,20 @@ import sys
 from parsley import makeGrammar
 
 parse_grammar = r"""
-    program = anything*
+    ws = (' ' | '\r' | '\n' | '\t')*
+    digit = anything:x ?(x in '0123456789') -> x
+    num = <digit+>:ds -> int(ds) 
+
+    primary = ws num:n ws -> n
+            | ws '(' exp:e ')' ws -> e
+
+    fac     = fac:x ('*' | '/'):op primary:y -> [op, x, y]
+            | primary
+
+    exp     = exp:x ('+' | '-'):op fac:y -> [op, x, y]
+            | fac
+
+    program = exp
 """
 
 def parse(source):
