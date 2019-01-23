@@ -1,3 +1,6 @@
-print 3 * 2;
-var name;
-var name2 = 5;
+var a = 1;
+var b = 2;
+print a;
+print b;
+a = b;
+print a;
