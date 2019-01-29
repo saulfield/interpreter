@@ -118,12 +118,12 @@ parse_grammar = r"""
     init      = ws '=' exp:e                            -> e
     declStmt  = ws 'var' ws identifier:i init?:e ';'    -> Decl(i, e)
     assignStmt= ws identifier:i init:e ';'              -> Assign(i, e)
-    block     = ws '{' ws stmt*:xs ws '}' ws            -> Block(xs)
+    block     = ws '{' ws stmt*:stmts ws '}' ws         -> Block(stmts)
     stmt      = printStmt
               | declStmt
               | assignStmt
               | block
-    program   = stmt*
+    program   = stmt*:stmts ws                          -> stmts
 """
 
 def parse(source):
@@ -140,6 +140,15 @@ def parse(source):
     ast = parser(source).program()
     return ast
 
+def interpret(source, reset=True):
+    global global_env, env
+    if reset:
+        global_env = Environment(None)
+        env = global_env
+    ast = parse(source)
+    for stmt in ast:
+        eval(stmt)
+
 def main():
     argc = len(sys.argv)
     if argc > 2:
@@ -149,16 +158,12 @@ def main():
         # Read and execute file
         with open(sys.argv[1]) as f:
             source = f.read()
-        ast = parse(source)
-        # print(ast)
-        for stmt in ast:
-            eval(stmt)              
+        interpret(source)
     else:
         # REPL mode
         while True:
             source = input('>> ')
-            ast = parse(source)
-            for stmt in ast:
-                eval(stmt)
+            interpret(source, reset=False)
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
