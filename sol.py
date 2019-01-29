@@ -12,7 +12,10 @@ arithmetic_ops = {
     '/': lambda x, y: x / y
 }
 
-global_env = {}
+class Environment:
+    def __init__(self, prev):
+        self.prev = prev
+        self.vars = {}
 
 class Primary:
     def __init__(self, type, val):
@@ -21,7 +24,7 @@ class Primary:
 
     def __repr__(self):
         if self.type == Type.Null: return "Null"
-        return "{}".format(self.val)
+        return f"{self.val}"
 
 class BinExp:
     def __init__(self, left, op, right):
@@ -30,7 +33,7 @@ class BinExp:
         self.right = right
 
     def __repr__(self):
-        return "({} {} {})".format(self.op, self.left, self.right)
+        return f"{self.op} {self.left} {self.right}"
 
 class Decl:
     def __init__(self, ident_node, exp):
@@ -50,10 +53,24 @@ class PrintStmt:
     def __init__(self, exp):
         self.exp = exp
 
+class Block:
+    def __init__(self, stmts):
+        self.stmts = stmts
+
+global_env = Environment(None)
+env = global_env
+
 def eval(node):
+    global env
     if isinstance(node, Primary):
         if node.type == Type.Ident:
-            return global_env[node.val]
+            search_env = env
+            while search_env != None:
+                if node.val in search_env.vars:
+                    break
+                search_env = search_env.prev
+            assert search_env != None, f"Error: var \'{node.val}\' not found"
+            return search_env.vars[node.val]
         return node.val
     elif isinstance(node, BinExp):
         left = eval(node.left)
@@ -62,15 +79,27 @@ def eval(node):
     elif isinstance(node, PrintStmt):
         print(eval(node.exp))
     elif isinstance(node, Decl):
-        if node.name in global_env: 
-            raise ValueError('Identifier {} already declared')
-        else: 
-            global_env[node.name] = eval(node.exp)
+        search_env = env
+        while search_env != None:
+            if node.name in search_env.vars:
+                raise ValueError(f"Error: identifier \'{node.name}\' already declared")
+            search_env = search_env.prev
+        env.vars[node.name] = eval(node.exp)
     elif isinstance(node, Assign):
-        assert(node.name in global_env)
-        global_env[node.name] = eval(node.exp)
+        search_env = env
+        while search_env != None:
+            if node.name in search_env.vars:
+                break
+            search_env = search_env.prev
+        assert search_env != None, f"Error: var \'{node.name}\' not found"
+        search_env.vars[node.name] = eval(node.exp)
+    elif isinstance(node, Block):
+        env = Environment(env)
+        for stmt in node.stmts:
+            eval(stmt)
+        env = env.prev
     else:
-        raise TypeError('Type not recognized: {}'.format(type(node)))
+        raise TypeError(f'Error: type not recognized: {type(node)}')
 
 parse_grammar = r"""
     ws = (' ' | '\r' | '\n' | '\t')*
@@ -89,9 +118,11 @@ parse_grammar = r"""
     init      = ws '=' exp:e                            -> e
     declStmt  = ws 'var' ws identifier:i init?:e ';'    -> Decl(i, e)
     assignStmt= ws identifier:i init:e ';'              -> Assign(i, e)
+    block     = ws '{' ws stmt*:xs ws '}' ws            -> Block(xs)
     stmt      = printStmt
               | declStmt
               | assignStmt
+              | block
     program   = stmt*
 """
 
@@ -102,7 +133,8 @@ def parse(source):
         'BinExp':BinExp,
         'PrintStmt':PrintStmt,
         'Decl':Decl,
-        'Assign':Assign
+        'Assign':Assign,
+        'Block':Block
     }
     parser = makeGrammar(parse_grammar, bindings)
     ast = parser(source).program()
@@ -111,7 +143,7 @@ def parse(source):
 def main():
     argc = len(sys.argv)
     if argc > 2:
-        print("Usage:\n\t" + sys.argv[0] + " <filename>")
+        print(f'Usage:\n\t {sys.argv[0]} <filename>')
         exit(1)
     elif argc == 2:
         # Read and execute file

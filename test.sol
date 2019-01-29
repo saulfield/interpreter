@@ -1,6 +1,16 @@
 var a = 1;
-var b = 2;
 print a;
-print b;
-a = b;
+a = 2;
 print a;
+
+{
+    var b = 3;
+    a = b;
+    print a;
+
+    {
+        var c = 4;
+        a = c;
+        print a;
+    }
+}
