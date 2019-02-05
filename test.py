@@ -67,6 +67,7 @@ else
     a = 0;
 }
 """)
+valid_sources.append("var a = true; if (a) a = false;")
 
 def create_test(source):
     def f():

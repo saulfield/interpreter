@@ -27,7 +27,11 @@ class Environment:
 class Primary:
     def __init__(self, type, val):
         self.type = type
-        self.val = val
+        if type == Type.Bool:
+            if val == 'true':  self.val = True
+            if val == 'false': self.val = False
+        else:
+            self.val = val
 
     def __repr__(self):
         if self.type == Type.Null: return "Null"
@@ -131,6 +135,12 @@ def find_var(varname, env):
         search_env = search_env.prev
     return search_env
 
+def is_truthy(node):
+    if isinstance(node, Primary) and node.type == Type.Ident: return True
+    if isinstance(node, Primary) and node.type == Type.Bool:  return True
+    if isinstance(node, BinExp) and node.op in logical_ops:   return True
+    return False
+
 def eval(node):
     global env
     if isinstance(node, Primary):
@@ -162,7 +172,7 @@ def eval(node):
             eval(stmt)
         env = env.prev
     elif isinstance(node, IfStmt):
-        assert node.exp.op in logical_ops, f"Error: if-statement must use a logical expression"
+        assert is_truthy(node.exp), f"Error: if-statement expression must be truthy"
         if eval(node.exp):
             eval(node.thenStmt)
         elif node.elseStmt:
