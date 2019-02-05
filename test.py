@@ -32,6 +32,41 @@ var a = 1;
     var a = 2;
 }
 """)
+valid_sources.append("""
+var a1b2 = 1 + 2;
+var a = 1;
+a = 2;
+
+{
+    var b = 3;
+    a = b;
+
+    {
+        var c = 4;
+        a = c;
+    }
+}
+""")
+valid_sources.append("var a = 1; if (a == 1) a = 2;")
+valid_sources.append("""var a = 1;
+
+if (a == 1)
+{
+    a = a + 1;
+}
+""")
+valid_sources.append("""
+var a = 2;
+
+if (a == 1)
+{
+    a = a + 1;
+}
+else
+{
+    a = 0;
+}
+""")
 
 def create_test(source):
     def f():

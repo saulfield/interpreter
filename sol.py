@@ -5,12 +5,19 @@ from parsley import makeGrammar
 Type = Enum('Type', 'Null Num Bool Ident')
 StmtKind = Enum('StmtKind', 'Print')
 
+# TODO: could probably do some fancy python ast stuff here to make it more compact
 arithmetic_ops = {
-    '+': lambda x, y: x + y,
-    '-': lambda x, y: x - y,
-    '*': lambda x, y: x * y,
-    '/': lambda x, y: x / y
+    '+': lambda x, y: x + y, '-': lambda x, y: x - y,
+    '*': lambda x, y: x * y, '/': lambda x, y: x / y,
 }
+
+logical_ops = {
+    '>': lambda x, y: x > y, '<': lambda x, y: x < y,
+    '==': lambda x, y: x == y, '!=': lambda x, y: x != y,
+    '>=': lambda x, y: x >= y, '<=': lambda x, y: x <= y,
+}
+
+ops = {**arithmetic_ops, **logical_ops}
 
 class Environment:
     def __init__(self, prev):
@@ -53,29 +60,89 @@ class PrintStmt:
     def __init__(self, exp):
         self.exp = exp
 
+class IfStmt:
+    def __init__(self, exp, thenStmt, elseStmt):
+        self.exp = exp
+        self.thenStmt = thenStmt
+        self.elseStmt = elseStmt
+
 class Block:
     def __init__(self, stmts):
         self.stmts = stmts
 
+parse_grammar = r"""
+    ws = (' ' | '\r' | '\n' | '\t')*
+    logical_op = ('>' | '<' | '==' | '!=' | '>=' | '<=' )
+    digit = anything:x ?(x in '0123456789')                     -> x
+    num = <digit+>:ds                                           -> int(ds)
+    identifier = <letter+>:first <letterOrDigit*>:rest          -> Primary(Type.Ident, first + rest)
+
+    primary     = ws num:x ws                                   -> Primary(Type.Num, x)
+                | ws ('true' | 'false'):x ws                    -> Primary(Type.Bool, x)
+                | ws '(' exp:x ')' ws                           -> x
+                | ws identifier:x ws                            -> x
+              
+    fac         = fac:x ('*' | '/'):op primary:y                -> BinExp(x, op, y)
+                | primary
+    add         = add:x ('+' | '-'):op fac:y                    -> BinExp(x, op, y)
+                | fac
+    logical     = logical:x logical_op:op add:y                 -> BinExp(x, op, y)
+                | add
+    exp         = logical
+
+    declStmt    = ws 'var' ws identifier:i (ws '=' exp:e)? ';'  -> Decl(i, e)
+    printStmt   = ws 'print' exp:e ';'                          -> PrintStmt(e)
+    assignStmt  = ws identifier:i ws '=' exp:e ';'              -> Assign(i, e)
+    block       = ws '{' ws stmt*:stmts ws '}' ws               -> Block(stmts)
+    ifStmt      = ws 'if' ws '(' ws exp:e ws ')' stdStmt:x 
+                 (ws 'else' ws stdStmt:y)?:y                  -> IfStmt(e, x, y)
+    stdStmt     = printStmt
+                | ifStmt
+                | assignStmt
+                | block
+    stmt        = declStmt
+                | stdStmt
+    program     = stmt*:stmts ws                        -> stmts
+"""
+
+def parse(source):
+    bindings = {
+        'Type':Type,
+        'Primary':Primary,
+        'BinExp':BinExp,
+        'Decl':Decl,
+        'PrintStmt':PrintStmt,
+        'Assign':Assign,
+        'IfStmt':IfStmt,
+        'Block':Block,
+    }
+    parser = makeGrammar(parse_grammar, bindings)
+    ast = parser(source).program()
+    return ast
+
 global_env = Environment(None)
 env = global_env
+
+def find_var(varname, env):
+    search_env = env
+    while search_env != None:
+        if varname in search_env.vars:
+            break
+        search_env = search_env.prev
+    return search_env
 
 def eval(node):
     global env
     if isinstance(node, Primary):
         if node.type == Type.Ident:
-            search_env = env
-            while search_env != None:
-                if node.val in search_env.vars:
-                    break
-                search_env = search_env.prev
-            assert search_env != None, f"Error: var \'{node.val}\' not found"
-            return search_env.vars[node.val]
+            found_env = find_var(node.val, env)
+            assert found_env != None, f"Error: var \'{node.val}\' not found"
+            return found_env.vars[node.val]
         return node.val
     elif isinstance(node, BinExp):
         left = eval(node.left)
         right = eval(node.right)
-        return arithmetic_ops[node.op](left, right)
+        return ops[node.op](left, right)
     elif isinstance(node, PrintStmt):
         print(eval(node.exp))
     elif isinstance(node, Decl):
@@ -86,59 +153,22 @@ def eval(node):
             search_env = search_env.prev
         env.vars[node.name] = eval(node.exp)
     elif isinstance(node, Assign):
-        search_env = env
-        while search_env != None:
-            if node.name in search_env.vars:
-                break
-            search_env = search_env.prev
-        assert search_env != None, f"Error: var \'{node.name}\' not found"
-        search_env.vars[node.name] = eval(node.exp)
+        found_env = find_var(node.name, env)
+        assert found_env != None, f"Error: var \'{node.name}\' not found"
+        found_env.vars[node.name] = eval(node.exp)
     elif isinstance(node, Block):
         env = Environment(env)
         for stmt in node.stmts:
             eval(stmt)
         env = env.prev
+    elif isinstance(node, IfStmt):
+        assert node.exp.op in logical_ops, f"Error: if-statement must use a logical expression"
+        if eval(node.exp):
+            eval(node.thenStmt)
+        elif node.elseStmt:
+                eval(node.elseStmt)
     else:
         raise TypeError(f'Error: type not recognized: {type(node)}')
-
-parse_grammar = r"""
-    ws = (' ' | '\r' | '\n' | '\t')*
-    digit = anything:x ?(x in '0123456789') -> x
-    num = <digit+>:ds -> int(ds)
-    identifier = <letter+>:first <letterOrDigit*>:rest  -> Primary(Type.Ident, first + rest)
-
-    primary   = ws num:n ws                             -> Primary(Type.Num, n)
-              | ws '(' exp:e ')' ws                     -> e
-              | ws identifier:i                         -> i
-    fac       = fac:x ('*' | '/'):op primary:y          -> BinExp(x, op, y)
-              | primary
-    exp       = exp:x ('+' | '-'):op fac:y              -> BinExp(x, op, y)
-              | fac
-    printStmt = ws 'print' exp:e ';'                    -> PrintStmt(e)
-    init      = ws '=' exp:e                            -> e
-    declStmt  = ws 'var' ws identifier:i init?:e ';'    -> Decl(i, e)
-    assignStmt= ws identifier:i init:e ';'              -> Assign(i, e)
-    block     = ws '{' ws stmt*:stmts ws '}' ws         -> Block(stmts)
-    stmt      = printStmt
-              | declStmt
-              | assignStmt
-              | block
-    program   = stmt*:stmts ws                          -> stmts
-"""
-
-def parse(source):
-    bindings = {
-        'Type':Type,
-        'Primary':Primary,
-        'BinExp':BinExp,
-        'PrintStmt':PrintStmt,
-        'Decl':Decl,
-        'Assign':Assign,
-        'Block':Block
-    }
-    parser = makeGrammar(parse_grammar, bindings)
-    ast = parser(source).program()
-    return ast
 
 def interpret(source, reset=True):
     global global_env, env

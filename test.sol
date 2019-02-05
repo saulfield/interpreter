@@ -1,16 +1,12 @@
-var a = 1;
-print a;
-a = 2;
-print a;
+var a = 2;
 
+if (a == 1)
 {
-    var b = 3;
-    a = b;
-    print a;
-
-    {
-        var c = 4;
-        a = c;
-        print a;
-    }
+    a = a + 1;
 }
+else
+{
+    a = 0;
+}
+
+print a;
