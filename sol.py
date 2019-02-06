@@ -35,34 +35,25 @@ class BinExp:
         self.op = op
         self.right = right
 
-class Decl:
+class VarStatement(object):
     def __init__(self, ident_node, exp):
         self.name = ident_node.val
         self.exp = exp
         if exp is None:
             self.exp = Primary(Type.Null, None)
 
-class Assign:
-    def __init__(self, ident_node, exp):
-        self.name = ident_node.val
-        self.exp = exp
-        if exp is None:
-            self.exp = Primary(Type.Null, None)
+class Decl(VarStatement): pass
+class Assign(VarStatement): pass
 
-class PrintStmt:
-    def __init__(self, exp):
-        self.exp = exp
-
-class IfStmt:
+class Statement(object):
     def __init__(self, exp, thenStmt, elseStmt):
         self.exp = exp
         self.thenStmt = thenStmt
         self.elseStmt = elseStmt
 
-class WhileStmt:
-    def __init__(self, exp, thenStmt):
-        self.exp = exp
-        self.thenStmt = thenStmt
+class PrintStmt(Statement): pass
+class WhileStmt(Statement): pass
+class IfStmt(Statement): pass
 
 class Block:
     def __init__(self, stmts):
@@ -91,19 +82,19 @@ parse_grammar = r"""
     exp         = logical
 
     declStmt    = ws 'var' ws identifier:i (ws '=' exp)?:e ';'      -> Decl(i, e)
-    printStmt   = ws 'print' exp:e ';'                              -> PrintStmt(e)
+    printStmt   = ws 'print' exp:e ';'                              -> PrintStmt(e, None, None)
     assignExp   = ws identifier:i ws '=' exp:e                      -> Assign(i, e)
     assignStmt  = assignExp:e ';'                                   -> e
     block       = ws '{' ws stmt*:stmts ws '}' ws                   -> Block(stmts)
     ifStmt      = ws 'if' ws '(' ws exp:e ws ')' stdStmt:thenStmt 
                     (ws 'else' ws stdStmt)?:elseStmt                -> IfStmt(e, thenStmt, elseStmt)
-    whileStmt   = ws 'while' ws '(' ws exp:cond ws ')' stdStmt:stmt -> WhileStmt(cond, stmt)
+    whileStmt   = ws 'while' ws '(' ws exp:cond ws ')' stdStmt:stmt -> WhileStmt(cond, stmt, None)
     forStmt     = ws 'for' ws '(' ws
                     (declStmt | stdStmt | ';' -> None):init ws
                     exp?:cond ';' ws
                     (assignExp)?:inc ws ')' ws stdStmt:stmt         -> Block([init, 
                                                                               WhileStmt(Primary(Type.Bool, 'true') if cond is None else cond, 
-                                                                              Block([stmt, inc]))])
+                                                                              Block([stmt, inc]), None)])
     stdStmt     = printStmt
                 | ifStmt
                 | whileStmt
@@ -116,18 +107,7 @@ parse_grammar = r"""
 """
 
 def parse(source):
-    bindings = {
-        'Type':Type,
-        'Primary':Primary,
-        'BinExp':BinExp,
-        'Decl':Decl,
-        'PrintStmt':PrintStmt,
-        'Assign':Assign,
-        'IfStmt':IfStmt,
-        'WhileStmt':WhileStmt,
-        'Block':Block,
-    }
-    parser = makeGrammar(parse_grammar, bindings)
+    parser = makeGrammar(parse_grammar, globals())
     ast = parser(source).program()
     return ast
 
