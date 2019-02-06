@@ -1,7 +1,3 @@
-var a = 20;
-
-while (a > 0)
-{
+for (var a = 0; a < 10; a = a + 1) {
     print a;
-    a = a - 1;
 }

@@ -76,6 +76,7 @@ while (a > 0)
     a = a - 1;
 }
 """)
+valid_sources.append("for (var a = 0; a < 10; a = a + 1) a = a + 1;")
 
 def create_test(source):
     def f():

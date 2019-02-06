@@ -82,33 +82,41 @@ class Block:
 parse_grammar = r"""
     ws = (' ' | '\r' | '\n' | '\t')*
     logical_op = ('>' | '<' | '==' | '!=' | '>=' | '<=' )
-    digit = anything:x ?(x in '0123456789')                     -> x
-    num = <digit+>:ds                                           -> int(ds)
-    identifier = <letter+>:first <letterOrDigit*>:rest          -> Primary(Type.Ident, first + rest)
+    digit = anything:x ?(x in '0123456789')                         -> x
+    num = <digit+>:ds                                               -> int(ds)
+    identifier = <letter+>:first <letterOrDigit*>:rest              -> Primary(Type.Ident, first + rest)
 
-    primary     = ws num:x ws                                   -> Primary(Type.Num, x)
-                | ws ('true' | 'false'):x ws                    -> Primary(Type.Bool, x)
-                | ws '(' exp:x ')' ws                           -> x
-                | ws identifier:x ws                            -> x
+    primary     = ws num:x ws                                       -> Primary(Type.Num, x)
+                | ws ('true' | 'false'):x ws                        -> Primary(Type.Bool, x)
+                | ws '(' exp:x ')' ws                               -> x
+                | ws identifier:x ws                                -> x
               
-    fac         = fac:x ('*' | '/'):op primary:y                -> BinExp(x, op, y)
+    fac         = fac:x ('*' | '/'):op primary:y                    -> BinExp(x, op, y)
                 | primary
-    add         = add:x ('+' | '-'):op fac:y                    -> BinExp(x, op, y)
+    add         = add:x ('+' | '-'):op fac:y                        -> BinExp(x, op, y)
                 | fac
-    logical     = logical:x logical_op:op add:y                 -> BinExp(x, op, y)
+    logical     = logical:x logical_op:op add:y                     -> BinExp(x, op, y)
                 | add
     exp         = logical
 
-    declStmt    = ws 'var' ws identifier:i (ws '=' exp:e)? ';'  -> Decl(i, e)
-    printStmt   = ws 'print' exp:e ';'                          -> PrintStmt(e)
-    assignStmt  = ws identifier:i ws '=' exp:e ';'              -> Assign(i, e)
-    block       = ws '{' ws stmt*:stmts ws '}' ws               -> Block(stmts)
-    ifStmt      = ws 'if' ws '(' ws exp:e ws ')' stdStmt:x 
-                 (ws 'else' ws stdStmt:y)?:y                    -> IfStmt(e, x, y)
-    whileStmt   = ws 'while' ws '(' ws exp:e ws ')' stdStmt:x   -> WhileStmt(e, x)
+    declStmt    = ws 'var' ws identifier:i (ws '=' exp)?:e ';'      -> Decl(i, e)
+    printStmt   = ws 'print' exp:e ';'                              -> PrintStmt(e)
+    assignExp   = ws identifier:i ws '=' exp:e                      -> Assign(i, e)
+    assignStmt  = assignExp:e ';'                                   -> e
+    block       = ws '{' ws stmt*:stmts ws '}' ws                   -> Block(stmts)
+    ifStmt      = ws 'if' ws '(' ws exp:e ws ')' stdStmt:thenStmt 
+                    (ws 'else' ws stdStmt)?:elseStmt                -> IfStmt(e, thenStmt, elseStmt)
+    whileStmt   = ws 'while' ws '(' ws exp:cond ws ')' stdStmt:stmt -> WhileStmt(cond, stmt)
+    forStmt     = ws 'for' ws '(' ws
+                    (declStmt | stdStmt | ';' -> None):init ws
+                    exp?:cond ';' ws
+                    (assignExp)?:inc ws ')' ws stdStmt:stmt         -> Block([init, 
+                                                                              WhileStmt(Primary(Type.Bool, 'true') if cond is None else cond, 
+                                                                              Block([stmt, inc]))])
     stdStmt     = printStmt
                 | ifStmt
                 | whileStmt
+                | forStmt
                 | assignStmt
                 | block
     stmt        = declStmt
@@ -189,6 +197,8 @@ def eval(node):
         assert is_truthy(node.exp), f"Error: while-statement expression must be truthy"
         while eval(node.exp):
             eval(node.thenStmt)
+    elif node is None:
+        pass
     else:
         raise TypeError(f'Error: type not recognized: {type(node)}')
 
