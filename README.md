@@ -3,6 +3,13 @@ This is a parser and interpreter for a simple programming language written for e
 
 The combination of Python + OMeta is very expressive, and was a great fit for this project. The total code is around 200 lines (40 of OMeta).
 
+# Run it
+`pip install parsley`
+
+`python sol.py [file]`
+
+Running with no file will drop into REPL mode.
+
 # References
 ## [OMeta](https://en.wikipedia.org/wiki/OMeta)
 This is the meta-language used for the parser. It's basically a souped-up [PEG](https://en.wikipedia.org/wiki/Parsing_expression_grammar). Alessandro Warth's [thesis](http://www.vpri.org/pdf/tr2008003_experimenting.pdf) is probably the best place to read about it.
