@@ -2,7 +2,7 @@ import sys
 from enum import Enum
 from parsley import makeGrammar
 
-Type = Enum('Type', 'Null Num Bool Ident')
+Type = Enum('Type', 'Null Num Bool String Ident')
 StmtKind = Enum('StmtKind', 'Print')
 
 # TODO: could probably do some fancy python ast stuff here to make these more compact
@@ -85,9 +85,11 @@ parse_grammar = r"""
     digit = anything:x ?(x in '0123456789')                         -> x
     num = <digit+>:ds                                               -> int(ds)
     identifier = <letter+>:first <letterOrDigit*>:rest              -> Primary(Type.Ident, first + rest)
+    string = '"' (~'"' anything)*:c '"'                             -> ''.join(c)
 
     primary     = ws num:x ws                                       -> Primary(Type.Num, x)
                 | ws ('true' | 'false'):x ws                        -> Primary(Type.Bool, x)
+                | ws string:x ws                                    -> Primary(Type.String, x)
                 | ws '(' exp:x ')' ws                               -> x
                 | ws identifier:x ws                                -> x
               

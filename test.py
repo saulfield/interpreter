@@ -48,8 +48,8 @@ a = 2;
 }
 """)
 valid_sources.append("var a = 1; if (a == 1) a = 2;")
-valid_sources.append("""var a = 1;
-
+valid_sources.append("""
+var a = 1;
 if (a == 1)
 {
     a = a + 1;
@@ -70,13 +70,13 @@ else
 valid_sources.append("var a = true; if (a) a = false;")
 valid_sources.append("""
 var a = 20;
-
 while (a > 0)
 {
     a = a - 1;
 }
 """)
 valid_sources.append("for (var a = 0; a < 10; a = a + 1) a = a + 1;")
+valid_sources.append("var word = \"hello world\"; word = word + \"!\";")
 
 def create_test(source):
     def f():
