@@ -1,5 +1,7 @@
 # Overview
-This is a parser and interpreter for a simple programming language, written for educational purposes. The goal was to keep things as minimal as possible to allow for quick prototyping. The combination of Python + OMeta is very expressive, and was a great fit for this project.
+This is a parser and interpreter for a simple programming language written for educational purposes. The goal was to keep things as minimal as possible to allow for quick prototyping. 
+
+The combination of Python + OMeta is very expressive, and was a great fit for this project. The total code is around 200 lines (40 of OMeta).
 
 # References
 ## [OMeta](https://en.wikipedia.org/wiki/OMeta)
