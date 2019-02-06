@@ -5,7 +5,7 @@ from parsley import makeGrammar
 Type = Enum('Type', 'Null Num Bool Ident')
 StmtKind = Enum('StmtKind', 'Print')
 
-# TODO: could probably do some fancy python ast stuff here to make it more compact
+# TODO: could probably do some fancy python ast stuff here to make these more compact
 arithmetic_ops = {
     '+': lambda x, y: x + y, '-': lambda x, y: x - y,
     '*': lambda x, y: x * y, '/': lambda x, y: x / y,
@@ -70,6 +70,11 @@ class IfStmt:
         self.thenStmt = thenStmt
         self.elseStmt = elseStmt
 
+class WhileStmt:
+    def __init__(self, exp, thenStmt):
+        self.exp = exp
+        self.thenStmt = thenStmt
+
 class Block:
     def __init__(self, stmts):
         self.stmts = stmts
@@ -99,14 +104,16 @@ parse_grammar = r"""
     assignStmt  = ws identifier:i ws '=' exp:e ';'              -> Assign(i, e)
     block       = ws '{' ws stmt*:stmts ws '}' ws               -> Block(stmts)
     ifStmt      = ws 'if' ws '(' ws exp:e ws ')' stdStmt:x 
-                 (ws 'else' ws stdStmt:y)?:y                  -> IfStmt(e, x, y)
+                 (ws 'else' ws stdStmt:y)?:y                    -> IfStmt(e, x, y)
+    whileStmt   = ws 'while' ws '(' ws exp:e ws ')' stdStmt:x   -> WhileStmt(e, x)
     stdStmt     = printStmt
                 | ifStmt
+                | whileStmt
                 | assignStmt
                 | block
     stmt        = declStmt
                 | stdStmt
-    program     = stmt*:stmts ws                        -> stmts
+    program     = stmt*:stmts ws                                -> stmts
 """
 
 def parse(source):
@@ -118,6 +125,7 @@ def parse(source):
         'PrintStmt':PrintStmt,
         'Assign':Assign,
         'IfStmt':IfStmt,
+        'WhileStmt':WhileStmt,
         'Block':Block,
     }
     parser = makeGrammar(parse_grammar, bindings)
@@ -138,7 +146,7 @@ def find_var(varname, env):
 def is_truthy(node):
     if isinstance(node, Primary) and node.type == Type.Ident: return True
     if isinstance(node, Primary) and node.type == Type.Bool:  return True
-    if isinstance(node, BinExp) and node.op in logical_ops:   return True
+    if isinstance(node, BinExp)  and node.op in logical_ops:  return True
     return False
 
 def eval(node):
@@ -177,6 +185,10 @@ def eval(node):
             eval(node.thenStmt)
         elif node.elseStmt:
                 eval(node.elseStmt)
+    elif isinstance(node, WhileStmt):
+        assert is_truthy(node.exp), f"Error: while-statement expression must be truthy"
+        while eval(node.exp):
+            eval(node.thenStmt)
     else:
         raise TypeError(f'Error: type not recognized: {type(node)}')
 

@@ -68,6 +68,14 @@ else
 }
 """)
 valid_sources.append("var a = true; if (a) a = false;")
+valid_sources.append("""
+var a = 20;
+
+while (a > 0)
+{
+    a = a - 1;
+}
+""")
 
 def create_test(source):
     def f():
