@@ -3,20 +3,16 @@ from enum import Enum
 from parsley import makeGrammar
 
 Type = Enum('Type', 'Null Num Bool String Ident')
-StmtKind = Enum('StmtKind', 'Print')
 
-# TODO: could probably do some fancy python ast stuff here to make these more compact
 arithmetic_ops = {
     '+': lambda x, y: x + y, '-': lambda x, y: x - y,
     '*': lambda x, y: x * y, '/': lambda x, y: x / y,
 }
-
 logical_ops = {
     '>': lambda x, y: x > y, '<': lambda x, y: x < y,
     '==': lambda x, y: x == y, '!=': lambda x, y: x != y,
     '>=': lambda x, y: x >= y, '<=': lambda x, y: x <= y,
 }
-
 ops = {**arithmetic_ops, **logical_ops}
 
 class Environment:
@@ -33,18 +29,11 @@ class Primary:
         else:
             self.val = val
 
-    def __repr__(self):
-        if self.type == Type.Null: return "Null"
-        return f"{self.val}"
-
 class BinExp:
     def __init__(self, left, op, right):
         self.left = left
         self.op = op
         self.right = right
-
-    def __repr__(self):
-        return f"{self.op} {self.left} {self.right}"
 
 class Decl:
     def __init__(self, ident_node, exp):
@@ -218,16 +207,13 @@ def main():
     if argc > 2:
         print(f'Usage:\n\t {sys.argv[0]} <filename>')
         exit(1)
-    elif argc == 2:
-        # Read and execute file
+    elif argc == 2: # Read and execute file
         with open(sys.argv[1]) as f:
             source = f.read()
         interpret(source)
-    else:
-        # REPL mode
+    else:           # REPL mode
         while True:
             source = input('>> ')
             interpret(source, reset=False)
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
