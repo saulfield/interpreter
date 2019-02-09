@@ -1,18 +1,12 @@
 import sys
+import operator as op
 from enum import Enum
 from parsley import makeGrammar
 
 Type = Enum('Type', 'Null Num Bool String Ident')
 
-arithmetic_ops = {
-    '+': lambda x, y: x + y, '-': lambda x, y: x - y,
-    '*': lambda x, y: x * y, '/': lambda x, y: x / y,
-}
-logical_ops = {
-    '>': lambda x, y: x > y, '<': lambda x, y: x < y,
-    '==': lambda x, y: x == y, '!=': lambda x, y: x != y,
-    '>=': lambda x, y: x >= y, '<=': lambda x, y: x <= y,
-}
+arithmetic_ops = {'+': op.add, '-': op.sub, '*': op.mul, '/': op.truediv}
+logical_ops = {'>':  op.gt, '<':  op.lt, '==': op.eq, '!=': op.ne, '>=': op.ge, '<=': op.le}
 ops = {**arithmetic_ops, **logical_ops}
 
 class Environment:
@@ -93,7 +87,8 @@ parse_grammar = r"""
                     (declStmt | stdStmt | ';' -> None):init ws
                     exp?:cond ';' ws
                     (assignExp)?:inc ws ')' ws stdStmt:stmt         -> Block([init, 
-                                                                              WhileStmt(Primary(Type.Bool, 'true') if cond is None else cond, 
+                                                                              WhileStmt(Primary(Type.Bool, 'true') 
+                                                                              if cond is None else cond, 
                                                                               Block([stmt, inc]), None)])
     stdStmt     = printStmt
                 | ifStmt
@@ -103,7 +98,7 @@ parse_grammar = r"""
                 | block
     stmt        = declStmt
                 | stdStmt
-    program     = stmt*:stmts ws                                -> stmts
+    program     = stmt*:stmts ws                                    -> stmts
 """
 
 def parse(source):
