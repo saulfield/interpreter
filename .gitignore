@@ -3,3 +3,4 @@
 !*.md
 !*.sol
 !*.py
+!ast.svg

@@ -1,7 +1,3 @@
-var text = "hello world"; 
-text = text + "!";
-print text;
-
 var a = 0;
 var b = 1;
 

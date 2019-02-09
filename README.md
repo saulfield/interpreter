@@ -4,11 +4,25 @@ This is a parser and interpreter for a simple programming language written for e
 The combination of Python + OMeta is very expressive, and was a great fit for this project. The total code is around 200 lines (40 of OMeta).
 
 # Run it
+## Interpreter
 `pip install parsley`
 
 `python sol.py [file]`
 
 Running with no file will drop into REPL mode.
+
+## AST Visualizer
+[Download Graphviz](https://www.graphviz.org/download/)
+
+Get the Python Graphviz interface:
+
+`pip install graphviz`
+
+Run:
+
+`python visualize.py [file]`
+
+![AST Image](ast.svg)
 
 # References
 ## [OMeta](https://en.wikipedia.org/wiki/OMeta)
