@@ -10,3 +10,4 @@
 - [x] Strings
 - [x] Clean up node types
 - [x] Visualize AST 
+- [x] Functions
