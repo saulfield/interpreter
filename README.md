@@ -1,7 +1,37 @@
 # Overview
-This is a parser and interpreter for a simple programming language written for educational purposes. The goal was to keep things as minimal as possible to allow for quick prototyping. 
+This is an interpreter for a simple programming language written for educational purposes. The goal was to keep things as minimal as possible to allow for quick prototyping.
 
-The combination of Python + OMeta is very expressive, and was a great fit for this project. The total code is around 200 lines (40 of OMeta).
+The combination of Python + OMeta is very expressive, and was a great fit for this project. The total code is around 250 lines (55 of OMeta).
+
+# Example
+```
+func fib(n)
+{
+  if (n < 2) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+
+print "Fibonacci:";
+
+for (var i = 0; i < 10; i = i + 1) {
+  print fib(i);
+}
+```
+
+Output:
+```
+Fibonacci:
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+```
 
 # Run it
 ## Interpreter

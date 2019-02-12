@@ -3,17 +3,23 @@ import operator as op
 from enum import Enum
 from parsley import makeGrammar
 
-Type = Enum('Type', 'Null Num Bool String Ident')
-
-arithmetic_ops = {'+': op.add, '-': op.sub, '*': op.mul, '/': op.truediv}
-logical_ops = {'>':  op.gt, '<':  op.lt, '==': op.eq, '!=': op.ne, '>=': op.ge, '<=': op.le}
-ops = {**arithmetic_ops, **logical_ops}
-
+# Environment and globals
+class ReturnException(Exception): pass
 class Environment(object):
     def __init__(self, prev):
         self.prev = prev
         self.vars = {}
 
+global_env = Environment(None)
+env = global_env
+funcs = {}
+
+Type = Enum('Type', 'Null Num Bool String Ident')
+arithmetic_ops = {'+': op.add, '-': op.sub, '*': op.mul, '/': op.truediv}
+logical_ops = {'>':  op.gt, '<':  op.lt, '==': op.eq, '!=': op.ne, '>=': op.ge, '<=': op.le}
+ops = {**arithmetic_ops, **logical_ops}
+
+# AST nodes
 class Primary(object):
     def __init__(self, type, val):
         self.type = type
@@ -61,10 +67,29 @@ class Decl(VarStatement): pass
 class Assign(VarStatement): pass
 class PrintStmt(Statement): pass
 class WhileStmt(Statement): pass
-class IfStmt(Statement): pass
 class ReturnStmt(Statement): pass
-class ReturnException(Exception): pass
+class IfStmt(Statement): pass
 
+# Utility functions
+def find_var(varname, env):
+    search_env = env
+    while search_env != None:
+        if varname in search_env.vars:
+            break
+        search_env = search_env.prev
+    return search_env
+
+def is_truthy(node):
+    if isinstance(node, Primary) and node.type == Type.Ident: return True
+    if isinstance(node, Primary) and node.type == Type.Bool:  return True
+    if isinstance(node, BinExp)  and node.op in logical_ops:  return True
+    return False
+
+def safe_len(list_):
+    if list_ is None: return 0
+    else: return len(list_)
+
+# Parsing
 parse_grammar = r"""
     ws = (' ' | '\r' | '\n' | '\t')*
     logical_op = ('>' | '<' | '==' | '!=' | '>=' | '<=' )
@@ -129,29 +154,8 @@ def parse(source):
     ast = parser(source).program()
     return ast
 
-funcs = {}
-global_env = Environment(None)
-env = global_env
-
-def find_var(varname, env):
-    search_env = env
-    while search_env != None:
-        if varname in search_env.vars:
-            break
-        search_env = search_env.prev
-    return search_env
-
-def is_truthy(node):
-    if isinstance(node, Primary) and node.type == Type.Ident: return True
-    if isinstance(node, Primary) and node.type == Type.Bool:  return True
-    if isinstance(node, BinExp)  and node.op in logical_ops:  return True
-    return False
-
-def safe_len(list_):
-    if list_ is None: return 0
-    else: return len(list_)
-
-def eval(node):
+# Evaluate AST nodes recursively
+def evaluate(node):
     global env
     if isinstance(node, Primary):
         if node.type == Type.Ident:
@@ -160,40 +164,41 @@ def eval(node):
             return found_env.vars[node.val]
         return node.val
     elif isinstance(node, BinExp):
-        left = eval(node.left)
-        right = eval(node.right)
+        left = evaluate(node.left)
+        right = evaluate(node.right)
         return ops[node.op](left, right)
     elif isinstance(node, PrintStmt):
-        print(eval(node.exp))
+        print(evaluate(node.exp))
     elif isinstance(node, Decl):
         search_env = env
         while search_env != None:
             if node.name in search_env.vars:
                 raise ValueError(f"Error: identifier \'{node.name}\' already declared")
             search_env = search_env.prev
-        env.vars[node.name] = eval(node.exp)
+        env.vars[node.name] = evaluate(node.exp)
     elif isinstance(node, Assign):
         found_env = find_var(node.name, env)
         assert found_env != None, f"Error: var \'{node.name}\' not found"
-        found_env.vars[node.name] = eval(node.exp)
+        found_env.vars[node.name] = evaluate(node.exp)
     elif isinstance(node, Block):
         env = Environment(env)
         for stmt in node.stmts:
-            try: eval(stmt)
+            try: 
+                evaluate(stmt)
             except ReturnException as e:
                 env = env.prev
                 raise e
         env = env.prev
     elif isinstance(node, IfStmt):
         assert is_truthy(node.exp), f"Error: if-statement expression must be truthy"
-        if eval(node.exp): eval(node.thenStmt)
-        elif node.elseStmt: eval(node.elseStmt)
+        if evaluate(node.exp): evaluate(node.thenStmt)
+        elif node.elseStmt: evaluate(node.elseStmt)
     elif isinstance(node, WhileStmt):
         assert is_truthy(node.exp), f"Error: while-statement expression must be truthy"
-        while eval(node.exp):
-            eval(node.thenStmt)
+        while evaluate(node.exp):
+            evaluate(node.thenStmt)
     elif isinstance(node, ReturnStmt):
-        raise ReturnException(eval(node.exp))
+        raise ReturnException(evaluate(node.exp))
     elif isinstance(node, FuncDecl):
         assert env is global_env, f"Error: functions may only be declared in global scope"
         funcs[node.name] = node
@@ -203,8 +208,9 @@ def eval(node):
         env = Environment(env)
         if node.args is not None:
             for i, arg in enumerate(node.args):
-                env.vars[func.args[i]] = eval(arg)
-        try: eval(func.body)
+                env.vars[func.args[i]] = evaluate(arg)
+        try: 
+            evaluate(func.body)
         except ReturnException as e:
             env = env.prev
             return e.args[0]
@@ -214,6 +220,7 @@ def eval(node):
     else:
         raise TypeError(f'Error: type not recognized: {type(node)}')
 
+# Interface to the interpreter
 def interpret(source, reset=True):
     global global_env, env
     if reset:
@@ -222,7 +229,7 @@ def interpret(source, reset=True):
     ast = parse(source)
     for stmt in ast:
         try:
-            eval(stmt)
+            evaluate(stmt)
         except ReturnException as e:
             return e.args[0]
 
